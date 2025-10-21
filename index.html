@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive LLM Visualization</title>
+    <title>LLM Black Box Demystified</title>
     <style>
         * {
             margin: 0;
@@ -37,8 +37,35 @@
         .subtitle {
             text-align: center;
             color: #7f8c8d;
-            margin-bottom: 40px;
+            margin-bottom: 30px;
             font-size: 1.2em;
+        }
+        
+        .explainer {
+            background: #fff3cd;
+            border: 3px solid #ffc107;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        
+        .explainer h3 {
+            color: #856404;
+            margin-bottom: 15px;
+            font-size: 1.4em;
+        }
+        
+        .explainer ul {
+            margin: 15px 0 15px 25px;
+            color: #333;
+        }
+        
+        .explainer li {
+            margin: 8px 0;
+        }
+        
+        .explainer strong {
+            color: #856404;
         }
         
         .controls {
@@ -47,45 +74,79 @@
             margin-bottom: 30px;
             flex-wrap: wrap;
             justify-content: center;
+            align-items: flex-end;
         }
         
         .input-group {
             display: flex;
             flex-direction: column;
-            gap: 5px;
+            gap: 8px;
+            flex: 1;
+            min-width: 300px;
         }
         
         label {
             font-weight: 600;
             color: #34495e;
-            font-size: 0.9em;
+            font-size: 1em;
         }
         
-        input[type="text"] {
+        select {
             padding: 12px 20px;
             border: 2px solid #3498db;
             border-radius: 8px;
-            font-size: 1em;
-            min-width: 300px;
+            font-size: 1.1em;
+            background: white;
+            cursor: pointer;
+            font-family: inherit;
         }
         
         button {
-            padding: 12px 30px;
+            padding: 12px 40px;
             background: #3498db;
             color: white;
             border: none;
             border-radius: 8px;
-            font-size: 1em;
+            font-size: 1.1em;
             cursor: pointer;
             transition: all 0.3s;
             font-weight: 600;
-            align-self: flex-end;
         }
         
-        button:hover {
+        button:hover:not(:disabled) {
             background: #2980b9;
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+        }
+        
+        button:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 30px;
+            display: none;
+        }
+        
+        .loading.active {
+            display: block;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
         
         .step {
@@ -117,13 +178,14 @@
         .step-number {
             background: #3498db;
             color: white;
-            width: 35px;
-            height: 35px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: bold;
+            font-size: 1.2em;
         }
         
         .matrix-viz {
@@ -133,33 +195,12 @@
             padding: 15px;
             margin: 15px 0;
             font-family: 'Courier New', monospace;
-        }
-        
-        .matrix-label {
-            font-weight: bold;
-            color: #2c3e50;
-            margin-bottom: 10px;
-        }
-        
-        .vector {
-            background: #ecf0f1;
-            padding: 10px;
-            border-radius: 5px;
-            overflow-x: auto;
-            white-space: nowrap;
-        }
-        
-        .highlight {
-            background: #f39c12;
-            color: white;
-            padding: 2px 5px;
-            border-radius: 3px;
-            font-weight: bold;
+            font-size: 0.95em;
         }
         
         .info-box {
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
+            background: #e8f4f8;
+            border-left: 4px solid #3498db;
             padding: 15px;
             margin: 15px 0;
             border-radius: 5px;
@@ -167,32 +208,37 @@
         
         .result-box {
             background: #d4edda;
-            border: 2px solid #28a745;
-            border-radius: 8px;
-            padding: 20px;
+            border: 3px solid #28a745;
+            border-radius: 10px;
+            padding: 30px;
             margin-top: 30px;
             text-align: center;
         }
         
         .result-box h3 {
             color: #155724;
-            margin-bottom: 10px;
+            margin-bottom: 20px;
+            font-size: 1.5em;
         }
         
         .predicted-word {
-            font-size: 2em;
+            font-size: 2.2em;
             color: #28a745;
             font-weight: bold;
-            margin: 15px 0;
+            margin: 20px 0;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
         }
         
         .progress-bar {
             width: 100%;
-            height: 30px;
+            height: 35px;
             background: #ecf0f1;
-            border-radius: 15px;
+            border-radius: 18px;
             overflow: hidden;
             margin: 20px 0;
+            border: 2px solid #bdc3c7;
         }
         
         .progress-fill {
@@ -205,256 +251,311 @@
             justify-content: center;
             color: white;
             font-weight: bold;
+            font-size: 1.1em;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🧮 LLM Mathematics Visualizer</h1>
-        <p class="subtitle">See exactly what happens when an LLM processes text - just matrix math!</p>
+        <h1>🔓 Opening the "Black Box"</h1>
+        <p class="subtitle">Understanding What Happens Inside an LLM</p>
+        
+        <div class="explainer">
+            <h3>📖 What This Demo Shows:</h3>
+            <p><strong>This is NOT a full LLM.</strong> This is an educational demonstration designed to demystify the "black box" of how Large Language Models work.</p>
+            
+            <p style="margin-top: 15px;"><strong>What you'll see:</strong></p>
+            <ul>
+                <li><strong>Step 1:</strong> How text becomes numbers (embedding lookup)</li>
+                <li><strong>Step 2:</strong> How those numbers flow through layers (matrix multiplications)</li>
+                <li><strong>Step 3:</strong> How the model picks the next word (argmax over scores)</li>
+            </ul>
+            
+            <p style="margin-top: 15px;"><strong>The Key Insight:</strong></p>
+            <p style="margin-top: 8px;">ChatGPT, Claude, and all LLMs use these <em>exact same mathematical operations</em>. The only difference is <strong>scale</strong> — billions of parameters instead of pre-defined patterns. But the process? Identical matrix operations.</p>
+            
+            <p style="margin-top: 15px; padding: 12px; background: #fef5e7; border-radius: 5px;"><strong>💡 There's no magic inside the black box — just math!</strong></p>
+        </div>
         
         <div class="controls">
             <div class="input-group">
-                <label for="wordInput">Enter a word:</label>
-                <input type="text" id="wordInput" value="cat" placeholder="Type a word...">
+                <label for="promptSelect">Choose a text prompt:</label>
+                <select id="promptSelect">
+                    <optgroup label="Geography - Countries">
+                        <option value="The capital of France is">The capital of France is...</option>
+                        <option value="The capital of England is">The capital of England is...</option>
+                        <option value="The capital of Italy is">The capital of Italy is...</option>
+                        <option value="The capital of Spain is">The capital of Spain is...</option>
+                        <option value="The capital of Germany is">The capital of Germany is...</option>
+                        <option value="The capital of Japan is">The capital of Japan is...</option>
+                    </optgroup>
+                    <optgroup label="Geography - US States">
+                        <option value="The capital of California is">The capital of California is...</option>
+                        <option value="The capital of Florida is">The capital of Florida is...</option>
+                        <option value="The capital of Texas is">The capital of Texas is...</option>
+                        <option value="The capital of New York is">The capital of New York is...</option>
+                    </optgroup>
+                    <optgroup label="Common Phrases">
+                        <option value="The cat sat on the">The cat sat on the...</option>
+                        <option value="Once upon a time there was a">Once upon a time there was a...</option>
+                        <option value="I went to the store to buy">I went to the store to buy...</option>
+                        <option value="The quick brown fox jumps over the">The quick brown fox jumps over the...</option>
+                    </optgroup>
+                    <optgroup label="Technology & AI">
+                        <option value="Machine learning is a type of">Machine learning is a type of...</option>
+                        <option value="A neural network consists of">A neural network consists of...</option>
+                        <option value="Matrix multiplication is used to">Matrix multiplication is used to...</option>
+                        <option value="Artificial intelligence can be used to">Artificial intelligence can be used to...</option>
+                    </optgroup>
+                    <optgroup label="Questions">
+                        <option value="What is the meaning of">What is the meaning of...</option>
+                        <option value="How does a computer">How does a computer...</option>
+                        <option value="Where can I find">Where can I find...</option>
+                        <option value="Why do we need to">Why do we need to...</option>
+                    </optgroup>
+                </select>
             </div>
-            <button onclick="processWord()">Process Word →</button>
+            <button onclick="processPrompt()" id="processBtn">See Inside the Black Box →</button>
         </div>
         
         <div class="progress-bar">
-            <div class="progress-fill" id="progress">0%</div>
+            <div class="progress-fill" id="progress">Ready</div>
+        </div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p><strong>Processing through the layers...</strong></p>
+            <p style="margin-top: 10px; color: #666;">Matrix multiplications in progress</p>
         </div>
         
         <div id="step1" class="step">
             <h2><span class="step-number">1</span>Embedding Lookup</h2>
-            <p>Convert the word into a vector of numbers by looking it up in a learned table.</p>
-            <div class="matrix-viz">
-                <div class="matrix-label">Embedding Table: [50,257 × 768]</div>
-                <div id="embeddingResult"></div>
-            </div>
+            <p><strong>Converting words to numbers</strong></p>
+            <div class="matrix-viz" id="embeddingResult"></div>
             <div class="info-box">
-                <strong>What's happening:</strong> Each word has a unique row of 768 numbers that represent its "meaning" in mathematical space.
+                <strong>What's happening:</strong> Each word is looked up in a table (matrix) where every word has a unique row of numbers. This is just a <strong>table lookup</strong> — like looking up a phone number in a contact list.
             </div>
         </div>
         
         <div id="step2" class="step">
-            <h2><span class="step-number">2</span>Matrix Multiplication (Expand)</h2>
-            <p>Multiply [1 × 768] by weight matrix [768 × 3072] to get [1 × 3072]</p>
-            <div class="matrix-viz">
-                <div class="matrix-label">Operation: Input × W₁ = Output</div>
-                <div id="multiplyResult1"></div>
-            </div>
+            <h2><span class="step-number">2</span>Matrix Multiplications Through Layers</h2>
+            <p><strong>Processing through transformer layers</strong></p>
+            <div class="matrix-viz" id="layerResult"></div>
             <div class="info-box">
-                <strong>Parameters:</strong> This single operation uses 2,359,296 learned numbers (768 × 3072).
+                <strong>What's happening:</strong> The numbers flow through multiple layers where they get multiplied by learned weight matrices. This is <strong>linear algebra</strong> — multiplying and adding numbers.<br><br>
+                <strong>Real LLMs:</strong> GPT-2 has 12 layers, GPT-3 has 96 layers. Same operations, just repeated more times with different learned numbers.
             </div>
         </div>
         
         <div id="step3" class="step">
-            <h2><span class="step-number">3</span>Activation Function (GELU)</h2>
-            <p>Apply GELU function to each of the 3,072 numbers: f(x) = x · Φ(x)</p>
-            <div class="matrix-viz">
-                <div class="matrix-label">GELU Transformation</div>
-                <div id="geluResult"></div>
-            </div>
+            <h2><span class="step-number">3</span>Output Projection & Selection</h2>
+            <p><strong>Computing scores for all possible next words</strong></p>
+            <div class="matrix-viz" id="outputResult"></div>
             <div class="info-box">
-                <strong>Purpose:</strong> Introduces non-linearity - smoothly squashes negative values toward zero.
-            </div>
-        </div>
-        
-        <div id="step4" class="step">
-            <h2><span class="step-number">4</span>Matrix Multiplication (Compress)</h2>
-            <p>Multiply [1 × 3072] by weight matrix [3072 × 768] to get back to [1 × 768]</p>
-            <div class="matrix-viz">
-                <div class="matrix-label">Operation: Hidden × W₂ = Output</div>
-                <div id="multiplyResult2"></div>
-            </div>
-            <div class="info-box">
-                <strong>One layer complete!</strong> This is repeated 96 times with different weight matrices.
-            </div>
-        </div>
-        
-        <div id="step5" class="step">
-            <h2><span class="step-number">5</span>Repeat 96 Times</h2>
-            <p>Each "layer" of the transformer does steps 2-4 with its own learned weights.</p>
-            <div class="info-box">
-                <strong>Scale:</strong> 96 layers × ~5M parameters per layer = 175 billion total parameters
-            </div>
-        </div>
-        
-        <div id="step6" class="step">
-            <h2><span class="step-number">6</span>Output Projection</h2>
-            <p>Final multiplication: [1 × 768] × [768 × 50,257] = [1 × 50,257]</p>
-            <div class="matrix-viz">
-                <div class="matrix-label">Score for each word in vocabulary</div>
-                <div id="outputResult"></div>
+                <strong>What's happening:</strong> The final numbers get multiplied by one more matrix that has a column for every word in the vocabulary (50,000+ words). This gives a <strong>score for each possible next word</strong>. The word with the highest score wins!
             </div>
         </div>
         
         <div class="result-box" id="result" style="display: none;">
             <h3>🎯 Predicted Next Word</h3>
             <div class="predicted-word" id="predictedWord"></div>
-            <p>This word had the highest score after all the matrix multiplications!</p>
+            <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-top: 20px; text-align: left;">
+                <strong style="color: #856404;">📚 The Black Box Revealed:</strong>
+                <p style="margin-top: 10px; color: #333;">
+                    You just watched the complete process: Text → Numbers → Matrix Math → Next Word
+                </p>
+                <p style="margin-top: 10px; color: #333;">
+                    <strong>In real LLMs like ChatGPT:</strong> The exact same steps happen, but with <em>billions</em> of learned parameters doing the matrix multiplications. The "intelligence" comes from having the right numbers in those matrices, learned by seeing trillions of examples during training.
+                </p>
+            </div>
         </div>
     </div>
     
     <script>
-        let currentStep = 0;
-        const totalSteps = 6;
+        let isProcessing = false;
         
-        function processWord() {
-            const word = document.getElementById('wordInput').value || 'cat';
-            currentStep = 0;
+        // Curated predictions for each prompt
+        const predictions = {
+            'The capital of France is': 'Paris',
+            'The capital of England is': 'London',
+            'The capital of Italy is': 'Rome',
+            'The capital of Spain is': 'Madrid',
+            'The capital of Germany is': 'Berlin',
+            'The capital of Japan is': 'Tokyo',
+            'The capital of California is': 'Sacramento',
+            'The capital of Florida is': 'Tallahassee',
+            'The capital of Texas is': 'Austin',
+            'The capital of New York is': 'Albany',
+            'The cat sat on the': 'mat',
+            'Once upon a time there was a': 'princess',
+            'I went to the store to buy': 'milk',
+            'The quick brown fox jumps over the': 'lazy',
+            'Machine learning is a type of': 'artificial',
+            'A neural network consists of': 'layers',
+            'Matrix multiplication is used to': 'transform',
+            'Artificial intelligence can be used to': 'solve',
+            'What is the meaning of': 'life',
+            'How does a computer': 'work',
+            'Where can I find': 'information',
+            'Why do we need to': 'learn'
+        };
+        
+        async function processPrompt() {
+            if (isProcessing) return;
             
-            // Reset all steps
-            document.querySelectorAll('.step').forEach(step => {
-                step.classList.remove('active');
-            });
+            const selectedPrompt = document.getElementById('promptSelect').value;
+            const prediction = predictions[selectedPrompt] || 'the';
+            
+            // Reset
+            document.querySelectorAll('.step').forEach(step => step.classList.remove('active'));
             document.getElementById('result').style.display = 'none';
+            updateProgress(0, 'Processing...');
             
-            // Animate through steps
-            animateSteps(word);
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('processBtn').disabled = true;
+            isProcessing = true;
+            
+            try {
+                // Step 1: Embedding
+                await activateStep(1, selectedPrompt);
+                updateProgress(33, 'Step 1/3: Embedding Lookup');
+                await sleep(1200);
+                
+                // Step 2: Layers
+                await activateStep(2, selectedPrompt);
+                updateProgress(66, 'Step 2/3: Layer Processing');
+                await sleep(1400);
+                
+                // Step 3: Output
+                await activateStep(3, selectedPrompt, prediction);
+                updateProgress(90, 'Step 3/3: Computing Scores');
+                await sleep(1200);
+                
+                updateProgress(100, 'Complete!');
+                await sleep(400);
+                
+                showResult(selectedPrompt, prediction);
+                
+            } finally {
+                document.getElementById('loading').classList.remove('active');
+                document.getElementById('processBtn').disabled = false;
+                isProcessing = false;
+            }
         }
         
-        function animateSteps(word) {
-            const interval = setInterval(() => {
-                if (currentStep < totalSteps) {
-                    currentStep++;
-                    activateStep(currentStep, word);
-                    updateProgress();
-                } else {
-                    clearInterval(interval);
-                    showResult(word);
-                }
-            }, 1000);
-        }
-        
-        function activateStep(stepNum, word) {
+        async function activateStep(stepNum, prompt, prediction) {
             const step = document.getElementById(`step${stepNum}`);
             step.classList.add('active');
-            
-            // Populate step with data
-            switch(stepNum) {
-                case 1:
-                    populateEmbedding(word);
-                    break;
-                case 2:
-                    populateMultiply1();
-                    break;
-                case 3:
-                    populateGELU();
-                    break;
-                case 4:
-                    populateMultiply2();
-                    break;
-                case 6:
-                    populateOutput(word);
-                    break;
-            }
-            
-            // Scroll to step
             step.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-        
-        function populateEmbedding(word) {
-            const tokenId = Math.floor(Math.random() * 50000) + 1;
-            const vector = generateRandomVector(768, -1, 1);
-            document.getElementById('embeddingResult').innerHTML = `
-                <p><strong>Word:</strong> "${word}" → <strong>Token ID:</strong> ${tokenId}</p>
-                <div class="vector">[${vector.slice(0, 10).map(v => v.toFixed(3)).join(', ')}, ..., ${vector[767].toFixed(3)}]</div>
-                <p style="margin-top: 10px; color: #7f8c8d;">Vector length: 768 numbers</p>
-            `;
-        }
-        
-        function populateMultiply1() {
-            const input = generateRandomVector(768, -1, 1);
-            const output = generateRandomVector(3072, -2, 2);
-            document.getElementById('multiplyResult1').innerHTML = `
-                <p>[1 × 768] × [768 × 3072] = [1 × 3072]</p>
-                <p style="margin-top: 10px;"><strong>Input sample:</strong></p>
-                <div class="vector">[${input.slice(0, 8).map(v => v.toFixed(3)).join(', ')}, ...]</div>
-                <p style="margin-top: 10px;"><strong>Output sample:</strong></p>
-                <div class="vector">[${output.slice(0, 8).map(v => v.toFixed(3)).join(', ')}, ...]</div>
-            `;
-        }
-        
-        function populateGELU() {
-            const before = [-1.5, -0.8, -0.2, 0.3, 0.9, 1.5];
-            const after = before.map(x => x * (1 / (1 + Math.exp(-1.702 * x))));
-            document.getElementById('geluResult').innerHTML = `
-                <p><strong>Sample transformation:</strong></p>
-                <table style="width: 100%; margin-top: 10px;">
-                    <tr style="background: #ecf0f1;">
-                        <th style="padding: 8px;">Before GELU</th>
-                        <th style="padding: 8px;">After GELU</th>
-                    </tr>
-                    ${before.map((val, i) => `
-                        <tr>
-                            <td style="padding: 8px; text-align: center;">${val.toFixed(3)}</td>
-                            <td style="padding: 8px; text-align: center;"><span class="highlight">${after[i].toFixed(3)}</span></td>
-                        </tr>
-                    `).join('')}
-                </table>
-                <p style="margin-top: 10px; color: #7f8c8d;">Applied to all 3,072 numbers</p>
-            `;
-        }
-        
-        function populateMultiply2() {
-            const input = generateRandomVector(3072, -2, 2);
-            const output = generateRandomVector(768, -1, 1);
-            document.getElementById('multiplyResult2').innerHTML = `
-                <p>[1 × 3072] × [3072 × 768] = [1 × 768]</p>
-                <p style="margin-top: 10px;"><strong>Compressed back to original size!</strong></p>
-                <div class="vector">[${output.slice(0, 8).map(v => v.toFixed(3)).join(', ')}, ...]</div>
-            `;
-        }
-        
-        function populateOutput(word) {
-            const scores = {
-                'sat': 0.847,
-                'ran': 0.092,
-                'jumped': 0.034,
-                'meowed': 0.018,
-                'slept': 0.009
-            };
             
-            document.getElementById('outputResult').innerHTML = `
-                <p><strong>Top predicted next words after "${word}":</strong></p>
-                <table style="width: 100%; margin-top: 10px;">
-                    <tr style="background: #ecf0f1;">
-                        <th style="padding: 8px;">Word</th>
-                        <th style="padding: 8px;">Score</th>
-                        <th style="padding: 8px;">Probability</th>
-                    </tr>
-                    ${Object.entries(scores).map(([w, s]) => `
-                        <tr>
-                            <td style="padding: 8px; text-align: center;"><strong>${w}</strong></td>
-                            <td style="padding: 8px; text-align: center;">${s.toFixed(3)}</td>
-                            <td style="padding: 8px; text-align: center;">${(s * 100).toFixed(1)}%</td>
-                        </tr>
-                    `).join('')}
-                </table>
-            `;
+            if (stepNum === 1) {
+                const tokens = prompt.split(/\s+/);
+                const tokenCount = tokens.length;
+                const vector = Array.from({length: 8}, () => (Math.random() * 2 - 1).toFixed(3));
+                
+                document.getElementById('embeddingResult').innerHTML = `
+                    <p style="margin-bottom: 12px;"><strong>Input text:</strong> "${prompt}"</p>
+                    <p style="margin-bottom: 12px;"><strong>Step 1a - Tokenize:</strong> Split into ${tokenCount} tokens</p>
+                    <p style="margin-bottom: 12px;"><strong>Step 1b - Lookup:</strong> Each token → row in [50,257 × 768] embedding matrix</p>
+                    <p style="margin-top: 15px; padding: 10px; background: #f0f0f0; border-radius: 5px;">
+                        <strong>Example:</strong> Token "${tokens[tokens.length - 1]}" → <code>[${vector.join(', ')}, ..., 0.891]</code><br>
+                        <span style="color: #666; font-size: 0.9em;">(768 numbers total)</span>
+                    </p>
+                    <p style="margin-top: 12px; color: #666; font-size: 0.95em;">
+                        <strong>Result:</strong> We now have ${tokenCount} vectors, each with 768 numbers
+                    </p>
+                `;
+            } else if (stepNum === 2) {
+                const layerOps = [
+                    'Self-Attention: Computing which words attend to which',
+                    'Feed-Forward: [768] × [768×3072] × [3072×768]',
+                    'Add & Normalize: Stabilizing the values'
+                ];
+                
+                document.getElementById('layerResult').innerHTML = `
+                    <p style="margin-bottom: 15px;"><strong>Processing through transformer layers...</strong></p>
+                    <div style="background: #f0f0f0; padding: 12px; border-radius: 5px; margin: 10px 0;">
+                        <strong>Layer 1:</strong><br>
+                        ${layerOps.map(op => `• ${op}`).join('<br>')}
+                    </div>
+                    <p style="text-align: center; font-size: 1.2em; margin: 15px 0;">⬇️</p>
+                    <div style="background: #f0f0f0; padding: 12px; border-radius: 5px; margin: 10px 0;">
+                        <strong>Layer 2:</strong><br>
+                        <em>Same operations, different learned weights...</em>
+                    </div>
+                    <p style="text-align: center; font-size: 1.2em; margin: 15px 0;">⬇️</p>
+                    <p style="text-align: center; color: #666;">
+                        ... repeat through all layers ...<br>
+                        <small>(GPT-2: 12 layers, GPT-3: 96 layers)</small>
+                    </p>
+                    <p style="margin-top: 15px; padding: 10px; background: #e8f4f8; border-radius: 5px;">
+                        <strong>Key Point:</strong> Each layer performs <em>millions of matrix multiplications</em>. All just multiplying and adding numbers!
+                    </p>
+                `;
+            } else if (stepNum === 3) {
+                const scores = Array.from({length: 5}, () => (Math.random() * 15 - 3).toFixed(2));
+                
+                document.getElementById('outputResult').innerHTML = `
+                    <p style="margin-bottom: 15px;"><strong>Final matrix multiplication:</strong></p>
+                    <p style="margin-bottom: 10px; font-family: monospace; background: #f0f0f0; padding: 10px; border-radius: 5px;">
+                        [1 × 768] × [768 × 50,257] = [1 × 50,257]
+                    </p>
+                    <p style="margin: 15px 0;"><strong>This produces a score for EVERY word in the vocabulary:</strong></p>
+                    <div style="background: #f0f0f0; padding: 12px; border-radius: 5px; margin: 10px 0;">
+                        <table style="width: 100%; text-align: left;">
+                            <tr style="border-bottom: 2px solid #ddd;">
+                                <th style="padding: 8px;">Word</th>
+                                <th style="padding: 8px;">Score</th>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px;"><strong style="color: #28a745;">${prediction}</strong></td>
+                                <td style="padding: 8px;"><strong style="color: #28a745;">12.47 ← HIGHEST!</strong></td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px;">the</td>
+                                <td style="padding: 8px;">${scores[0]}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px;">a</td>
+                                <td style="padding: 8px;">${scores[1]}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px;">and</td>
+                                <td style="padding: 8px;">${scores[2]}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px;">...</td>
+                                <td style="padding: 8px;">...</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <p style="margin-top: 15px; padding: 10px; background: #e8f4f8; border-radius: 5px;">
+                        <strong>Selection:</strong> Pick the word with the highest score → <strong>${prediction}</strong>
+                    </p>
+                `;
+            }
         }
         
-        function showResult(word) {
+        function showResult(prompt, prediction) {
+            document.getElementById('predictedWord').innerHTML = `
+                "${prompt} <strong style="color: #28a745;">${prediction}</strong>"
+            `;
             document.getElementById('result').style.display = 'block';
-            document.getElementById('predictedWord').textContent = 'sat';
             document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
         
-        function updateProgress() {
-            const percent = (currentStep / totalSteps) * 100;
+        function updateProgress(percent, text) {
             const progressBar = document.getElementById('progress');
             progressBar.style.width = percent + '%';
-            progressBar.textContent = Math.round(percent) + '%';
+            progressBar.textContent = text || (Math.round(percent) + '%');
         }
         
-        function generateRandomVector(length, min, max) {
-            return Array.from({length}, () => Math.random() * (max - min) + min);
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
         }
         
-        // Auto-run on load
-        setTimeout(() => processWord(), 500);
+        // Auto-run first example on load
+        setTimeout(() => processPrompt(), 1000);
     </script>
 </body>
 </html>
