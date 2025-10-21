@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive LLM Visualization</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 40px;
+            font-size: 1.2em;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        label {
+            font-weight: 600;
+            color: #34495e;
+            font-size: 0.9em;
+        }
+        
+        input[type="text"] {
+            padding: 12px 20px;
+            border: 2px solid #3498db;
+            border-radius: 8px;
+            font-size: 1em;
+            min-width: 300px;
+        }
+        
+        button {
+            padding: 12px 30px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+            align-self: flex-end;
+        }
+        
+        button:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+        }
+        
+        .step {
+            background: #f8f9fa;
+            border-left: 5px solid #95a5a6;
+            padding: 25px;
+            margin: 20px 0;
+            border-radius: 8px;
+            opacity: 0.3;
+            transition: all 0.5s;
+        }
+        
+        .step.active {
+            opacity: 1;
+            border-left-color: #3498db;
+            background: #ebf5fb;
+            transform: scale(1.02);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.2);
+        }
+        
+        .step h2 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .step-number {
+            background: #3498db;
+            color: white;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        
+        .matrix-viz {
+            background: white;
+            border: 2px solid #3498db;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .matrix-label {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .vector {
+            background: #ecf0f1;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+        
+        .highlight {
+            background: #f39c12;
+            color: white;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+        
+        .info-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+        
+        .result-box {
+            background: #d4edda;
+            border: 2px solid #28a745;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 30px;
+            text-align: center;
+        }
+        
+        .result-box h3 {
+            color: #155724;
+            margin-bottom: 10px;
+        }
+        
+        .predicted-word {
+            font-size: 2em;
+            color: #28a745;
+            font-weight: bold;
+            margin: 15px 0;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #ecf0f1;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3498db, #2ecc71);
+            width: 0%;
+            transition: width 0.5s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧮 LLM Mathematics Visualizer</h1>
+        <p class="subtitle">See exactly what happens when an LLM processes text - just matrix math!</p>
+        
+        <div class="controls">
+            <div class="input-group">
+                <label for="wordInput">Enter a word:</label>
+                <input type="text" id="wordInput" value="cat" placeholder="Type a word...">
+            </div>
+            <button onclick="processWord()">Process Word →</button>
+        </div>
+        
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress">0%</div>
+        </div>
+        
+        <div id="step1" class="step">
+            <h2><span class="step-number">1</span>Embedding Lookup</h2>
+            <p>Convert the word into a vector of numbers by looking it up in a learned table.</p>
+            <div class="matrix-viz">
+                <div class="matrix-label">Embedding Table: [50,257 × 768]</div>
+                <div id="embeddingResult"></div>
+            </div>
+            <div class="info-box">
+                <strong>What's happening:</strong> Each word has a unique row of 768 numbers that represent its "meaning" in mathematical space.
+            </div>
+        </div>
+        
+        <div id="step2" class="step">
+            <h2><span class="step-number">2</span>Matrix Multiplication (Expand)</h2>
+            <p>Multiply [1 × 768] by weight matrix [768 × 3072] to get [1 × 3072]</p>
+            <div class="matrix-viz">
+                <div class="matrix-label">Operation: Input × W₁ = Output</div>
+                <div id="multiplyResult1"></div>
+            </div>
+            <div class="info-box">
+                <strong>Parameters:</strong> This single operation uses 2,359,296 learned numbers (768 × 3072).
+            </div>
+        </div>
+        
+        <div id="step3" class="step">
+            <h2><span class="step-number">3</span>Activation Function (GELU)</h2>
+            <p>Apply GELU function to each of the 3,072 numbers: f(x) = x · Φ(x)</p>
+            <div class="matrix-viz">
+                <div class="matrix-label">GELU Transformation</div>
+                <div id="geluResult"></div>
+            </div>
+            <div class="info-box">
+                <strong>Purpose:</strong> Introduces non-linearity - smoothly squashes negative values toward zero.
+            </div>
+        </div>
+        
+        <div id="step4" class="step">
+            <h2><span class="step-number">4</span>Matrix Multiplication (Compress)</h2>
+            <p>Multiply [1 × 3072] by weight matrix [3072 × 768] to get back to [1 × 768]</p>
+            <div class="matrix-viz">
+                <div class="matrix-label">Operation: Hidden × W₂ = Output</div>
+                <div id="multiplyResult2"></div>
+            </div>
+            <div class="info-box">
+                <strong>One layer complete!</strong> This is repeated 96 times with different weight matrices.
+            </div>
+        </div>
+        
+        <div id="step5" class="step">
+            <h2><span class="step-number">5</span>Repeat 96 Times</h2>
+            <p>Each "layer" of the transformer does steps 2-4 with its own learned weights.</p>
+            <div class="info-box">
+                <strong>Scale:</strong> 96 layers × ~5M parameters per layer = 175 billion total parameters
+            </div>
+        </div>
+        
+        <div id="step6" class="step">
+            <h2><span class="step-number">6</span>Output Projection</h2>
+            <p>Final multiplication: [1 × 768] × [768 × 50,257] = [1 × 50,257]</p>
+            <div class="matrix-viz">
+                <div class="matrix-label">Score for each word in vocabulary</div>
+                <div id="outputResult"></div>
+            </div>
+        </div>
+        
+        <div class="result-box" id="result" style="display: none;">
+            <h3>🎯 Predicted Next Word</h3>
+            <div class="predicted-word" id="predictedWord"></div>
+            <p>This word had the highest score after all the matrix multiplications!</p>
+        </div>
+    </div>
+    
+    <script>
+        let currentStep = 0;
+        const totalSteps = 6;
+        
+        function processWord() {
+            const word = document.getElementById('wordInput').value || 'cat';
+            currentStep = 0;
+            
+            // Reset all steps
+            document.querySelectorAll('.step').forEach(step => {
+                step.classList.remove('active');
+            });
+            document.getElementById('result').style.display = 'none';
+            
+            // Animate through steps
+            animateSteps(word);
+        }
+        
+        function animateSteps(word) {
+            const interval = setInterval(() => {
+                if (currentStep < totalSteps) {
+                    currentStep++;
+                    activateStep(currentStep, word);
+                    updateProgress();
+                } else {
+                    clearInterval(interval);
+                    showResult(word);
+                }
+            }, 1000);
+        }
+        
+        function activateStep(stepNum, word) {
+            const step = document.getElementById(`step${stepNum}`);
+            step.classList.add('active');
+            
+            // Populate step with data
+            switch(stepNum) {
+                case 1:
+                    populateEmbedding(word);
+                    break;
+                case 2:
+                    populateMultiply1();
+                    break;
+                case 3:
+                    populateGELU();
+                    break;
+                case 4:
+                    populateMultiply2();
+                    break;
+                case 6:
+                    populateOutput(word);
+                    break;
+            }
+            
+            // Scroll to step
+            step.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        
+        function populateEmbedding(word) {
+            const tokenId = Math.floor(Math.random() * 50000) + 1;
+            const vector = generateRandomVector(768, -1, 1);
+            document.getElementById('embeddingResult').innerHTML = `
+                <p><strong>Word:</strong> "${word}" → <strong>Token ID:</strong> ${tokenId}</p>
+                <div class="vector">[${vector.slice(0, 10).map(v => v.toFixed(3)).join(', ')}, ..., ${vector[767].toFixed(3)}]</div>
+                <p style="margin-top: 10px; color: #7f8c8d;">Vector length: 768 numbers</p>
+            `;
+        }
+        
+        function populateMultiply1() {
+            const input = generateRandomVector(768, -1, 1);
+            const output = generateRandomVector(3072, -2, 2);
+            document.getElementById('multiplyResult1').innerHTML = `
+                <p>[1 × 768] × [768 × 3072] = [1 × 3072]</p>
+                <p style="margin-top: 10px;"><strong>Input sample:</strong></p>
+                <div class="vector">[${input.slice(0, 8).map(v => v.toFixed(3)).join(', ')}, ...]</div>
+                <p style="margin-top: 10px;"><strong>Output sample:</strong></p>
+                <div class="vector">[${output.slice(0, 8).map(v => v.toFixed(3)).join(', ')}, ...]</div>
+            `;
+        }
+        
+        function populateGELU() {
+            const before = [-1.5, -0.8, -0.2, 0.3, 0.9, 1.5];
+            const after = before.map(x => x * (1 / (1 + Math.exp(-1.702 * x))));
+            document.getElementById('geluResult').innerHTML = `
+                <p><strong>Sample transformation:</strong></p>
+                <table style="width: 100%; margin-top: 10px;">
+                    <tr style="background: #ecf0f1;">
+                        <th style="padding: 8px;">Before GELU</th>
+                        <th style="padding: 8px;">After GELU</th>
+                    </tr>
+                    ${before.map((val, i) => `
+                        <tr>
+                            <td style="padding: 8px; text-align: center;">${val.toFixed(3)}</td>
+                            <td style="padding: 8px; text-align: center;"><span class="highlight">${after[i].toFixed(3)}</span></td>
+                        </tr>
+                    `).join('')}
+                </table>
+                <p style="margin-top: 10px; color: #7f8c8d;">Applied to all 3,072 numbers</p>
+            `;
+        }
+        
+        function populateMultiply2() {
+            const input = generateRandomVector(3072, -2, 2);
+            const output = generateRandomVector(768, -1, 1);
+            document.getElementById('multiplyResult2').innerHTML = `
+                <p>[1 × 3072] × [3072 × 768] = [1 × 768]</p>
+                <p style="margin-top: 10px;"><strong>Compressed back to original size!</strong></p>
+                <div class="vector">[${output.slice(0, 8).map(v => v.toFixed(3)).join(', ')}, ...]</div>
+            `;
+        }
+        
+        function populateOutput(word) {
+            const scores = {
+                'sat': 0.847,
+                'ran': 0.092,
+                'jumped': 0.034,
+                'meowed': 0.018,
+                'slept': 0.009
+            };
+            
+            document.getElementById('outputResult').innerHTML = `
+                <p><strong>Top predicted next words after "${word}":</strong></p>
+                <table style="width: 100%; margin-top: 10px;">
+                    <tr style="background: #ecf0f1;">
+                        <th style="padding: 8px;">Word</th>
+                        <th style="padding: 8px;">Score</th>
+                        <th style="padding: 8px;">Probability</th>
+                    </tr>
+                    ${Object.entries(scores).map(([w, s]) => `
+                        <tr>
+                            <td style="padding: 8px; text-align: center;"><strong>${w}</strong></td>
+                            <td style="padding: 8px; text-align: center;">${s.toFixed(3)}</td>
+                            <td style="padding: 8px; text-align: center;">${(s * 100).toFixed(1)}%</td>
+                        </tr>
+                    `).join('')}
+                </table>
+            `;
+        }
+        
+        function showResult(word) {
+            document.getElementById('result').style.display = 'block';
+            document.getElementById('predictedWord').textContent = 'sat';
+            document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        
+        function updateProgress() {
+            const percent = (currentStep / totalSteps) * 100;
+            const progressBar = document.getElementById('progress');
+            progressBar.style.width = percent + '%';
+            progressBar.textContent = Math.round(percent) + '%';
+        }
+        
+        function generateRandomVector(length, min, max) {
+            return Array.from({length}, () => Math.random() * (max - min) + min);
+        }
+        
+        // Auto-run on load
+        setTimeout(() => processWord(), 500);
+    </script>
+</body>
+</html>
